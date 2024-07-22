@@ -1,0 +1,125 @@
+apiVersion: v1
+items:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      meta.helm.sh/release-name: otp-1.1.0
+      meta.helm.sh/release-namespace: default
+    creationTimestamp: "2024-07-22T13:27:33Z"
+    generation: 1
+    labels:
+      app: static-data-service
+      app.kubernetes.io/managed-by: Helm
+    name: static-data-service
+    namespace: default
+    resourceVersion: "2693"
+    uid: f32aa735-330c-4a50-82ac-003c5557299c
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: static-data-service
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: static-data-service
+      spec:
+        containers:
+        - envFrom:
+          - configMapRef:
+              name: opentp
+          image: ettec/otp-static-data-service:1.1.0
+          imagePullPolicy: Always
+          name: static-data-service
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        - name: splunk-go-instrumentation
+          image: quay.io/phagen/otel-go-instrumentation:1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NODE_IP
+              valueFrom:
+                  fieldRef:
+                    fieldPath: status.hostIP
+            - name: OTEL_GO_AUTO_TARGET_EXE
+              value: /app/service
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://$(NODE_IP):4317"
+            - name: OTEL_SERVICE_NAME
+              value: "static-data-service"
+            - name: OTEL_PROPAGATORS
+              value: "tracecontext,baggage"          
+          securityContext:
+            runAsUser: 0
+            privileged: true  
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2024-07-22T13:27:58Z"
+      lastUpdateTime: "2024-07-22T13:27:58Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2024-07-22T13:27:33Z"
+      lastUpdateTime: "2024-07-22T13:27:58Z"
+      message: ReplicaSet "static-data-service-578c95f6f" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      meta.helm.sh/release-name: otp-1.1.0
+      meta.helm.sh/release-namespace: default
+    creationTimestamp: "2024-07-22T13:27:33Z"
+    labels:
+      app: static-data-service
+      app.kubernetes.io/managed-by: Helm
+    name: static-data-service
+    namespace: default
+    resourceVersion: "2192"
+    uid: 7ec3cbe5-4785-483f-aa42-a2058074f7be
+  spec:
+    clusterIP: 10.43.215.30
+    clusterIPs:
+    - 10.43.215.30
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: api
+      port: 50551
+      protocol: TCP
+      targetPort: 50551
+    selector:
+      app: static-data-service
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+kind: List
+metadata:
+  resourceVersion: ""
