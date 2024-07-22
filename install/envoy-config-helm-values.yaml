@@ -120,7 +120,7 @@ files:
         type: logical_dns
         http2_protocol_options: {}
         lb_policy: round_robin
-        hosts: [{ socket_address: { address: order-monitor.default, port_value: 50551 }}]
+        hosts: [{ socket_address: { address: order-monitor.default, port_value: 50551 }}, { socket_address: { address: order-monitor.default, port_value: 8080 }}]
       - name: client-config-service-cluster
         connect_timeout: 0.25s
         type: logical_dns
