@@ -37,6 +37,7 @@ items:
         labels:
           app: market-data-service
       spec:
+        shareProcessNamespace: true
         containers:
         - env:
           - name: MDS_ID
