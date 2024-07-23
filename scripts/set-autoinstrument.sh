@@ -23,8 +23,8 @@ javaannotation='{"spec": {"template":{"metadata":{"annotations":{"instrumentatio
 # Loop through each service and apply the kubectl patch command
 for service in "${goservices[@]}"; do
   echo "Patching service: $service"
-  kubectl patch deployment "$service" -p "$goannotation1"
-  kubectl patch deployment "$service" -p "$goannotation2"
+  #kubectl patch deployment "$service" -p "$goannotation1"
+  #kubectl patch deployment "$service" -p "$goannotation2"
 done
 echo "Go Patching completed."
 for service in "${javaservices[@]}"; do

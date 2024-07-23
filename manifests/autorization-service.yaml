@@ -4,7 +4,6 @@ metadata:
   annotations:
   labels:
     app: authorization-service
-    app.kubernetes.io/managed-by: Helm
   name: authorization-service
   namespace: default
 spec:
@@ -14,8 +13,6 @@ spec:
   template:
     metadata:
       annotations:
-        # instrumentation.opentelemetry.io/inject-go: default/splunk-otel-collector
-        # instrumentation.opentelemetry.io/otel-go-auto-target-exe: /app/service
       labels:
         app: authorization-service
     spec:  
@@ -24,7 +21,7 @@ spec:
       - envFrom:
         - configMapRef:
             name: opentp
-        image: ettec/otp-authorization-service:1.1.0
+        image: quay.io/phagen/authorization-service:1.1.0
         imagePullPolicy: Always
         name: authorization-service
         resources: {}
@@ -58,6 +55,7 @@ spec:
           runAsUser: 0
           privileged: true
 ---
+apiVersion: v1
 kind: Service
 metadata:
   name: authorization-service
