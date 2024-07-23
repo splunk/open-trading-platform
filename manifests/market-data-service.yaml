@@ -70,8 +70,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    app: market-data-service
   name: market-data-service
   namespace: default
 spec:

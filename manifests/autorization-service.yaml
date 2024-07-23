@@ -57,6 +57,26 @@ spec:
         securityContext:
           runAsUser: 0
           privileged: true
+---
+kind: Service
+metadata:
+  name: authorization-service
+  namespace: default
+spec:
+  ports:
+  - name: auth
+    port: 4000
+    protocol: TCP
+    targetPort: 4000
+  - name: login
+    port: 50551
+    protocol: TCP
+    targetPort: 50551
+  selector:
+    app: authorization-service
+  sessionAffinity: ClientIP
+  type: ClusterIP
+        
 
 
   
