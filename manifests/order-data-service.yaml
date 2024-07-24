@@ -1,124 +1,80 @@
-apiVersion: v1
-items:
-- apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    annotations:
-      deployment.kubernetes.io/revision: "1"
-      meta.helm.sh/release-name: otp-1.1.0
-      meta.helm.sh/release-namespace: default
-    creationTimestamp: "2024-07-22T13:27:33Z"
-    generation: 1
-    labels:
-      app: order-data-service
-      app.kubernetes.io/managed-by: Helm
-    name: order-data-service
-    namespace: default
-    resourceVersion: "2658"
-    uid: 728b089b-0db7-4583-8991-f6eb54b563de
-  spec:
-    progressDeadlineSeconds: 600
-    replicas: 2
-    revisionHistoryLimit: 10
-    selector:
-      matchLabels:
-        app: order-data-service
-    strategy:
-      rollingUpdate:
-        maxSurge: 25%
-        maxUnavailable: 25%
-      type: RollingUpdate
-    template:
-      metadata:
-        creationTimestamp: null
-        labels:
-          app: order-data-service
-      spec:
-        containers:
-        - envFrom:
-          - configMapRef:
-              name: opentp
-          image: ettec/otp-order-data-service:1.1.0
-          imagePullPolicy: Always
-          name: order-data-service
-          resources: {}
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-        - name: splunk-go-instrumentation
-          image: quay.io/phagen/otel-go-instrumentation:1.0
-          imagePullPolicy: IfNotPresent
-          env:
-            - name: NODE_IP
-              valueFrom:
-                  fieldRef:
-                    fieldPath: status.hostIP
-            - name: OTEL_GO_AUTO_TARGET_EXE
-              value: /app/service
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://$(NODE_IP):4317"
-            - name: OTEL_SERVICE_NAME
-              value: "order-data-service"
-            - name: OTEL_PROPAGATORS
-              value: "tracecontext,baggage"          
-          securityContext:
-            runAsUser: 0
-            privileged: true   
-        dnsPolicy: ClusterFirst
-        restartPolicy: Always
-        schedulerName: default-scheduler
-        securityContext: {}
-        terminationGracePeriodSeconds: 30
-  status:
-    availableReplicas: 2
-    conditions:
-    - lastTransitionTime: "2024-07-22T13:27:56Z"
-      lastUpdateTime: "2024-07-22T13:27:56Z"
-      message: Deployment has minimum availability.
-      reason: MinimumReplicasAvailable
-      status: "True"
-      type: Available
-    - lastTransitionTime: "2024-07-22T13:27:33Z"
-      lastUpdateTime: "2024-07-22T13:27:56Z"
-      message: ReplicaSet "order-data-service-7f654c79dc" has successfully progressed.
-      reason: NewReplicaSetAvailable
-      status: "True"
-      type: Progressing
-    observedGeneration: 1
-    readyReplicas: 2
-    replicas: 2
-    updatedReplicas: 2
-- apiVersion: v1
-  kind: Service
-  metadata:
-    annotations:
-      meta.helm.sh/release-name: otp-1.1.0
-      meta.helm.sh/release-namespace: default
-    creationTimestamp: "2024-07-22T13:27:33Z"
-    labels:
-      app: order-data-service
-      app.kubernetes.io/managed-by: Helm
-    name: order-data-service
-    namespace: default
-    resourceVersion: "2218"
-    uid: 47b15ff8-6483-44e0-9410-b92de33d3efc
-  spec:
-    clusterIP: 10.43.5.12
-    clusterIPs:
-    - 10.43.5.12
-    internalTrafficPolicy: Cluster
-    ipFamilies:
-    - IPv4
-    ipFamilyPolicy: SingleStack
-    ports:
-    - port: 50551
-      protocol: TCP
-      targetPort: 50551
-    selector:
-      app: order-data-service
-    sessionAffinity: None
-    type: ClusterIP
-  status:
-    loadBalancer: {}
-kind: List
+---
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  resourceVersion: ""
+  labels:
+    app: order-data-service
+  name: order-data-service
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: order-data-service
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: order-data-service
+    spec:
+      shareProcessNamespace: true
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: opentp
+        image: quay.io/phagen/order-data-service:1.1.0  
+        imagePullPolicy: Always
+        name: order-data-service
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      - name: splunk-go-instrumentation
+        image: quay.io/phagen/otel-go-instrumentation:1.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: NODE_IP
+          valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+        - name: OTEL_GO_AUTO_TARGET_EXE
+          value: "/app/service"
+        - name: OTEL_TRACES_EXPORTER
+          value: "otlp"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "grpc"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://$(NODE_IP):4317"
+        - name: OTEL_SERVICE_NAME
+          value: "order-data-service"
+        - name: OTEL_PROPAGATORS
+          value: "tracecontext,baggage"
+        - name: OTEL_GO_AUTO_GLOBAL
+          value: "true"
+        - name: OTEL_LOG_LEVEL
+          value: "Debug"
+        securityContext:
+          runAsUser: 0
+          privileged: true 
+---          
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: order-data-service
+  name: order-data-service
+  namespace: default
+spec:
+  ports:
+  - port: 50551
+    protocol: TCP
+    targetPort: 50551
+  selector:
+    app: order-data-service
+  sessionAffinity: None
+  type: ClusterIP
