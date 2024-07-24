@@ -1,52 +1,51 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: market-data-service
   labels:
-    app: market-data-service
+    app: iexg-market-data-gateway
+  name: iexg-market-data-gateway
+  namespace: default
 spec:
-  progressDeadlineSeconds: 600
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
   replicas: 2
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      app: market-data-service
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+      app: iexg-market-data-gateway
+  serviceName: iexg-market-data-gateway
   template:
     metadata:
-      annotations:
-        prometheus.io/port: "8080"
-        prometheus.io/scrape: "true"
       labels:
-        app: market-data-service
+        app: iexg-market-data-gateway
+        mic: IEXG
+        servicetype: market-data-gateway
     spec:
-      #automountServiceAccountToken: false
       shareProcessNamespace: true
       serviceAccount: otpservice
       serviceAccountName: otpservice
+      terminationGracePeriodSeconds: 30
       containers:
       - env:
-        - name: MDS_ID
+        - name: FIX_SIM_ADDRESS
+          value: iexgsimulator:50051
+        - name: GATEWAY_ID
           valueFrom:
             fieldRef:
+              apiVersion: v1
               fieldPath: metadata.name
-        image: quay.io/phagen/market-data-service:1.1.0
+        image: quay.io/phagen/market-data-gateway-fixsim:1.1.0
         imagePullPolicy: Always
-        name: market-data-service
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
+        name: iexg-market-data-gateway
+        ports:
+        - containerPort: 50551
+          name: api
+          protocol: TCP
         resources: {}
-          # limits: 
-          #   cpu: "1"
-          #   memory: "1Gi"
-          # requests:
-          #   cpu: "0.5"
-          #   memory: "512Mi"
-
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File 
       - name: splunk-go-instrumentation
         image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.14.0-alpha
         imagePullPolicy: IfNotPresent
@@ -64,7 +63,7 @@ spec:
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
             value: "http://$(NODE_IP):4317"
           - name: OTEL_SERVICE_NAME
-            value: "market-data-service"
+            value: "iexg-market-data-gateway"
           - name: OTEL_PROPAGATORS
             value: "tracecontext,baggage"
           - name: OTEL_GO_AUTO_GLOBAL
@@ -81,25 +80,8 @@ spec:
           requests:
             cpu: "0.1"
             memory: "128Mi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: market-data-service
-  name: market-data-service
-  namespace: default
-spec:
-  ports:
-  - name: api
-    port: 50551
-    protocol: TCP
-    targetPort: 50551
-  - name: prometheus
-    port: 8080
-    protocol: TCP
-    targetPort: 8080
-  selector:
-    app: market-data-service
-  sessionAffinity: ClientIP
-  type: ClusterIP
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+
