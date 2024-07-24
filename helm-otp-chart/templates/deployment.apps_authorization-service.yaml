@@ -14,8 +14,8 @@ spec:
       labels:
         app: authorization-service
     spec:
-      containers:
       shareProcessNamespace: true
+      containers:
       - envFrom:
         - configMapRef:
             name: opentp
