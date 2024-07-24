@@ -16,7 +16,9 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      creationTimestamp: null
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: default/splunk-otel-collector
+      labels:
       labels:
         app: xnassimulator
     spec:
