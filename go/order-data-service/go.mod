@@ -5,13 +5,16 @@ go 1.21
 require (
 	github.com/ettec/otp-common v1.4.2
 	github.com/golang/protobuf v1.4.2
-	github.com/segmentio/kafka-go v0.3.4
+	github.com/segmentio/kafka-go v0.4.2
 	github.com/stretchr/testify v1.4.0
 	google.golang.org/grpc v1.25.1
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/golang/snappy v0.0.1 // indirect
+	github.com/klauspost/compress v1.9.8 // indirect
+	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shopspring/decimal v0.0.0-20191009025716-f1972eb1d1f5 // indirect
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
