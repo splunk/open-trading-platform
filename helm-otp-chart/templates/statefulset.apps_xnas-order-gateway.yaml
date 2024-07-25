@@ -35,6 +35,9 @@ spec:
         servicetype: execution-venue 
         mic: XNAS
     spec:
+      shareProcessNamespace: true    
+      serviceAccount: otpservice
+      serviceAccountName: otpservice    
       containers:
       - envFrom:
         - configMapRef:
@@ -54,7 +57,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: {{ .Values.dockerRepo }}/otp-fix-sim-execution-venue:{{ .Values.dockerTag }}        
+        #image: {{ .Values.dockerRepo }}/otp-fix-sim-execution-venue:{{ .Values.dockerTag }}    
+        image: quay.io/phagen/fix-sim-execution-venue:1.1.0    
         imagePullPolicy: Always
         name: xnas-order-gateway
         ports:
@@ -63,8 +67,34 @@ spec:
         volumeMounts:
         - mountPath: /open-trading-platform
           name: execution-venue-storage
+      - name: splunk-go-instrumentation
+        image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.14.0-alpha
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: NODE_IP
+            valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          - name: OTEL_GO_AUTO_TARGET_EXE
+            value: "/app/service"
+          - name: OTEL_TRACES_EXPORTER
+            value: "otlp"
+          - name: OTEL_EXPORTER_OTLP_PROTOCOL
+            value: "grpc"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "http://$(NODE_IP):4317"
+          - name: OTEL_SERVICE_NAME
+            value: "xnas-order-gateway"
+          - name: OTEL_PROPAGATORS
+            value: "tracecontext,baggage"
+          - name: OTEL_GO_AUTO_GLOBAL
+            value: "true"
+          - name: OTEL_LOG_LEVEL
+            value: "Debug"
+        securityContext:
+          runAsUser: 0
+          privileged: true          
       volumes:
       - emptyDir: {}
         name: execution-venue-storage
-      serviceAccount: otpservice
-      serviceAccountName: otpservice
+
