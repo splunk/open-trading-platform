@@ -14,17 +14,41 @@ spec:
       labels:
         app: order-router
     spec:
+      shareProcessNamespace: true
+      serviceAccount: otpservice
+      serviceAccountName: otpservice    
       containers:
-      - image: {{ .Values.dockerRepo }}/otp-order-router:{{ .Values.dockerTag }}
+      #- image: {{ .Values.dockerRepo }}/otp-order-router:{{ .Values.dockerTag }}
+      - image: quay.io/phagen/order-router:1.1.0
         imagePullPolicy: Always
         name: order-router
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      serviceAccount: otpservice
-      serviceAccountName: otpservice
+      - image: quay.io/phagen/otel-go-instrumentation:1.0
+        imagePullPolicy: IfNotPresent
+        name: splunk-go-instrumentation
+        env:
+          - name: NODE_IP
+            valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          - name: OTEL_GO_AUTO_TARGET_EXE
+            value: "/app/service"
+          - name: OTEL_TRACES_EXPORTER
+            value: "otlp"
+          - name:  OTEL_EXPORTER_OTLP_PROTOCOL
+            value: "grpc"  
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "http://$(NODE_IP):4317"
+          - name: OTEL_SERVICE_NAME
+            value: "market-data-service"
+          - name: OTEL_PROPAGATORS
+            value: "tracecontext,baggage"
+          - name: OTEL_GO_AUTO_GLOBAL
+            value: "true"     
+          - name: OTEL_LOG_LEVEL
+            value: "Debug"         
+        securityContext:
+          runAsUser: 0
+          privileged: true        
+      
+
 

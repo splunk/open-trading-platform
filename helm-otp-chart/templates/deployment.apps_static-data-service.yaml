@@ -15,6 +15,7 @@ spec:
       labels:
         app: static-data-service
     spec:
+      shareProcessNamespace: true    
       containers:
       - envFrom:
         - configMapRef:
