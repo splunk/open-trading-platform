@@ -10,6 +10,10 @@ spec:
     port: 50551
     protocol: TCP
     targetPort: 50551
+  - name: prometheus
+    port: 8080
+    protocol: TCP
+    targetPort: 8080  
   selector:
     app: market-data-service
   sessionAffinity: ClientIP

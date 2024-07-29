@@ -8,7 +8,11 @@ spec:
   ports:
   - port: 50551
     protocol: TCP
-    targetPort: 50551
+    targetPort: 50551   
+  - port: 8080
+    name: prometheus
+    protocol: TCP
+    targetPort: 8080  
   selector:
     app: order-monitor
   sessionAffinity: None
