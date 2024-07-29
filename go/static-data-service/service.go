@@ -20,7 +20,18 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"go.opentelemetry.io/contrib/instrumentation/database/sql/otel/sql"
+    "go.opentelemetry.io/contrib/instrumentation/database/sql/otel/sql/otelpg"
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/trace"
 )
+
+// Initialize tracing provider (example with default provider)
+func initTracer() {
+    tracerProvider := otel.GetTracerProvider()
+    otel.SetTracerProvider(tracerProvider)
+}
 
 type service struct {
 	db *sql.DB
@@ -57,6 +68,11 @@ func (s *service) GetListingsWithSameInstrument(c context.Context, id *api.Listi
 
 	lq := listingsSelect + " where instruments.id = " + strconv.Itoa(int(listing.Instrument.Id))
 
+	ctx := context.Background()
+    tracer := otel.Tracer("GetListingsWithSameInstrument")
+    ctx, span := tracer.Start(ctx, "database-query")
+    defer span.End()
+
 	r, err := s.db.Query(lq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch listings:%w", err)
@@ -74,6 +90,11 @@ func (s *service) GetListingsWithSameInstrument(c context.Context, id *api.Listi
 func (s *service) GetListingMatching(_ context.Context, m *api.ExactMatchParameters) (*model.Listing, error) {
 
 	lq := listingsSelect + " where display_symbol = '" + m.Symbol + "' and markets.mic = '" + m.Mic + "'"
+
+	ctx := context.Background()
+    tracer := otel.Tracer("GetListingMatching")
+    ctx, span := tracer.Start(ctx, "database-query")
+    defer span.End()
 
 	r, err := s.db.Query(lq)
 	if err != nil {
@@ -100,6 +121,11 @@ func (s *service) GetListingsMatching(_ context.Context, m *api.MatchParameters)
 
 	lq := listingsSelect + " where display_symbol like '" + m.SymbolMatch + "%'"
 
+	ctx := context.Background()
+    tracer := otel.Tracer("GetListingMatching")
+    ctx, span := tracer.Start(ctx, "database-query")
+    defer span.End()
+
 	r, err := s.db.Query(lq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch listings from database:%w", err)
@@ -115,6 +141,11 @@ func (s *service) GetListingsMatching(_ context.Context, m *api.MatchParameters)
 
 func (s *service) GetListing(_ context.Context, id *api.ListingId) (*model.Listing, error) {
 	lq := fmt.Sprintf("%v where listings.id = %v", listingsSelect, id.ListingId)
+
+	ctx := context.Background()
+    tracer := otel.Tracer("GetListing")
+    ctx, span := tracer.Start(ctx, "database-query")
+    defer span.End()
 
 	r, err := s.db.Query(lq)
 	if err != nil {
@@ -137,6 +168,11 @@ func (s *service) GetListing(_ context.Context, id *api.ListingId) (*model.Listi
 func (s *service) GetListings(_ context.Context, ids *api.ListingIds) (*api.Listings, error) {
 
 	lq := listingsSelect + " where listings.id in (" + strings.Trim(strings.Join(strings.Fields(fmt.Sprint(ids.ListingIds)), ","), "[]") + ")"
+
+	ctx := context.Background()
+    tracer := otel.Tracer("GetListing")
+    ctx, span := tracer.Start(ctx, "database-query")
+    defer span.End()
 
 	r, err := s.db.Query(lq)
 	if err != nil {
