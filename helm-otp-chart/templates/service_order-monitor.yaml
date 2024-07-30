@@ -7,6 +7,7 @@ metadata:
 spec:
   ports:
   - port: 50551
+    name: internal
     protocol: TCP
     targetPort: 50551   
   - port: 8080
