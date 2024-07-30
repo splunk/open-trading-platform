@@ -6,16 +6,15 @@ metadata:
   name: order-monitor
 spec:
   ports:
-  - port: 50551
-    name: internal
+  - name: api
+    port: 50551
     protocol: TCP
-    targetPort: 50551   
-  - port: 8080
-    name: prometheus
+    targetPort: 50551
+  - name: prometheus
+    port: 8080
     protocol: TCP
-    targetPort: 8080  
+    targetPort: 8080
   selector:
     app: order-monitor
   sessionAffinity: None
   type: ClusterIP
-

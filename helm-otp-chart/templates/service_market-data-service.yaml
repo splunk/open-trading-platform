@@ -13,9 +13,8 @@ spec:
   - name: prometheus
     port: 8080
     protocol: TCP
-    targetPort: 8080  
+    targetPort: 8080
   selector:
     app: market-data-service
   sessionAffinity: ClientIP
   type: ClusterIP
-
