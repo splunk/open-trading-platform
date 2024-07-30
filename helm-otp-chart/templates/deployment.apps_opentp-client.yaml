@@ -23,7 +23,7 @@ spec:
         app: opentp-client
     spec:
       containers:
+      - image: quay.io/phagen/opentp-client:1.1.0
       #- image: {{ .Values.dockerRepo }}/otp-opentp-client:{{ .Values.dockerTag }}
-      - image: rcastley895/opentp-client:latest
         imagePullPolicy: Always
         name: opentp-client

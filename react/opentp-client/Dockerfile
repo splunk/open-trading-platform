@@ -4,10 +4,12 @@ ARG CI=true
 WORKDIR /app
 COPY . ./
 RUN npx browserslist@latest --update-db
+#RUN  npx update-browserslist-db@latest
 RUN yarn
 RUN yarn test
 RUN yarn build
 
-FROM nginx:1.17
+#FROM nginx:1.17
+FROM nginx:1.27.0-alpine-otel
 COPY --from=react-build /app/build /usr/share/nginx/html
 
