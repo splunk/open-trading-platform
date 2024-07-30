@@ -1,10 +1,11 @@
-FROM node:10.21.0-alpine3.11 as react-build
+FROM node:10.21.0-alpine3.11 AS react-build
+#RUN npm_config_target_arch=x64 npm i grpc-tools
 ARG CI=true
 WORKDIR /app
 COPY . ./
+RUN npx browserslist@latest --update-db
 RUN yarn
 RUN yarn test
-ARG CI=false
 RUN yarn build
 
 FROM nginx:1.17
