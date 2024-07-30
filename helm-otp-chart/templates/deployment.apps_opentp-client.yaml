@@ -18,7 +18,8 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      creationTimestamp: null
+      annotations:
+        instrumentation.opentelemetry.io/inject-nodejs: default/splunk-otel-collector
       labels:
         app: opentp-client
     spec:
