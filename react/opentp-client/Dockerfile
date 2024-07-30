@@ -1,4 +1,4 @@
-FROM node:10.21.0-alpine3.11 AS react-build
+FROM node:14.8.0-slim AS react-build
 #RUN npm_config_target_arch=x64 npm i grpc-tools
 ARG CI=true
 WORKDIR /app
