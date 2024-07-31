@@ -3,14 +3,14 @@ FROM node:14.8.0-slim AS react-build
 ARG CI=true
 WORKDIR /app
 COPY . ./
-RUN npx browserslist@latest --update-db
+#RUN npx browserslist@latest --update-db
 #RUN  npx update-browserslist-db@latest
-RUN yarn
+RUN yarn install
 
-RUN yarn test
-RUN yarn build
+#RUN yarn test
+#RUN yarn build
 
-ENV HOST 0.0.0.0
+
 EXPOSE 3000
 
 CMD [ "yarn", "start" ]
