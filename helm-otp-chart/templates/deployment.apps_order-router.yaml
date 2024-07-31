@@ -22,7 +22,7 @@ spec:
       - image: quay.io/phagen/order-router:1.1.0
         imagePullPolicy: Always
         name: order-router
-      - image: quay.io/phagen/otel-go-instrumentation:1.0
+      - image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.14.0-alpha
         imagePullPolicy: IfNotPresent
         name: splunk-go-instrumentation
         env:

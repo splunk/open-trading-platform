@@ -47,7 +47,7 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
       - name: splunk-go-instrumentation
-        image: quay.io/phagen/otel-go-instrumentation:1.0
+        image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.14.0-alpha
         env:
           - name: NODE_IP
             valueFrom:
