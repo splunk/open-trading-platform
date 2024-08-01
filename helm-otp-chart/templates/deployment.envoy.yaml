@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opentelemetry-demo-frontendproxy
+  name: envoy
   labels:
     app: envoy
 spec:
@@ -18,7 +18,7 @@ spec:
       containers:
         - name: envoy
           image: 'rcastley895/envoy:latest'
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
           
           - containerPort: 8082
@@ -36,8 +36,6 @@ spec:
           - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
             value: cumulative
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: $(OTEL_COLLECTOR_NAME)
-          - name: OTEL_COLLECTOR_PORT_GRPC
             value: "http://$(NODE_IP):4317"
           - name: OTEL_RESOURCE_ATTRIBUTES
             value: service.name=$(OTEL_SERVICE_NAME),service.version=1.11.1
