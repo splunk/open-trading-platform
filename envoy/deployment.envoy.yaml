@@ -90,3 +90,7 @@ spec:
     targetPort: n0
   selector:
     app: envoy
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800

@@ -26,7 +26,7 @@ static_resources:
                         envoy_grpc:
                           cluster_name: opentelemetry_collector_grpc
                         timeout: 0.250s
-                      service_name: envoy
+                      service_name: opentp-client
                       resource_detectors:
                         - name: envoy.tracers.opentelemetry.resource_detectors.environment
                           typed_config:
@@ -37,17 +37,6 @@ static_resources:
                     - name: grpc_local_service
                       domains:
                         - '*'
-                      typed_per_filter_config:
-                        envoy.filters.http.cors:
-                          "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
-                          allow_origin_string_match:
-                          - safe_regex:
-                              regex: \*
-                          allow_methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-                          allow_headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Access-Control-Allow-Origin"
-                          allow_credentials: true
-                          max_age: "1728000"
-                          expose_headers: custom-header-1,grpc-status,grpc-message
                       routes:
                         - match:
                             prefix: "/loginservice.LoginService"
@@ -82,16 +71,31 @@ static_resources:
                           route:
                             cluster: opentp-client-cluster
                           typed_per_filter_config:
-                            envoy.filters.http.ext_authz:
-                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
-                              disabled: true
                             envoy.filters.http.grpc_http1_reverse_bridge:
                               "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_http1_reverse_bridge.v3.FilterConfigPerRoute
                               disabled: true
+                            envoy.filters.http.ext_authz:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+                              disabled: true
+                      typed_per_filter_config:
+                        envoy.filters.http.cors:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                          allow_origin_string_match:
+                          - safe_regex:
+                              regex: \*
+                          allow_methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                          allow_headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Access-Control-Allow-Origin, X-Grpc-Web"
+                          allow_credentials: true
+                          max_age: "1728000"
+                          expose_headers: custom-header-1,grpc-status,grpc-message
                 http_filters:
                   - name: envoy.filters.http.cors
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
+                  - name: envoy.filters.http.grpc_http1_reverse_bridge
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_http1_reverse_bridge.v3.FilterConfig
+                      content_type: application/grpc-web-text
                   - name: envoy.filters.http.ext_authz
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
@@ -99,10 +103,6 @@ static_resources:
                         envoy_grpc:
                           cluster_name: ext-authz
                         timeout: 0.5s
-                  - name: envoy.filters.http.grpc_http1_reverse_bridge
-                    typed_config:
-                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_http1_reverse_bridge.v3.FilterConfig
-                      content_type: application/grpc-web-text
                   - name: envoy.filters.http.grpc_web
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
@@ -145,6 +145,11 @@ static_resources:
     - name: market-data-service-cluster
       connect_timeout: 0.25s
       type: STRICT_DNS
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
       lb_policy: round_robin
       load_assignment:
         cluster_name: market-data-service-cluster
@@ -158,6 +163,11 @@ static_resources:
     - name: order-data-service-cluster
       connect_timeout: 0.25s
       type: STRICT_DNS
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
       lb_policy: round_robin
       load_assignment:
         cluster_name: order-data-service-cluster
@@ -171,6 +181,11 @@ static_resources:
     - name: order-router-cluster
       connect_timeout: 0.25s
       type: STRICT_DNS
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
       lb_policy: round_robin
       load_assignment:
         cluster_name: order-router-cluster
@@ -184,6 +199,11 @@ static_resources:
     - name: static-data-service-cluster
       connect_timeout: 0.25s
       type: STRICT_DNS
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
       lb_policy: round_robin
       load_assignment:
         cluster_name: static-data-service-cluster
@@ -197,6 +217,11 @@ static_resources:
     - name: order-monitor-cluster
       connect_timeout: 0.25s
       type: STRICT_DNS
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
       lb_policy: round_robin
       load_assignment:
         cluster_name: order-monitor-cluster
@@ -210,6 +235,11 @@ static_resources:
     - name: client-config-service-cluster
       connect_timeout: 0.25s
       type: STRICT_DNS
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
       lb_policy: round_robin
       load_assignment:
         cluster_name: client-config-service-cluster
@@ -220,6 +250,23 @@ static_resources:
                     socket_address:
                       address: client-config-service.default
                       port_value: 50551
+    - name: opentelemetry_collector_grpc
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          '@type': type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: opentelemetry_collector
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: ${NODE_IP}
+                      port_value: 4318
     - name: ext-authz
       connect_timeout: 0.25s
       type: LOGICAL_DNS
