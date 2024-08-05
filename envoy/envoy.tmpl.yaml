@@ -14,7 +14,7 @@ static_resources:
                 - name: envoy.access_loggers.stdout
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
-                codec_type: AUTO
+                codec_type: auto
                 stat_prefix: ingress_http
                 tracing:
                   spawn_upstream_span: true
@@ -52,7 +52,6 @@ static_resources:
                         - match:
                             prefix: "/loginservice.LoginService"
                           route:
-                            prefix_rewrite: "/"
                             cluster: authorization-service-cluster
                         - match:
                             prefix: "/executionvenue.ExecutionVenue"
@@ -127,8 +126,13 @@ static_resources:
                       port_value: 80
     - name: authorization-service-cluster
       connect_timeout: 0.25s
-      type: STATIC
-      lb_policy: round_robin
+      type: LOGICAL_DNS
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      lb_policy: ROUND_ROBIN
       load_assignment:
         cluster_name: authorization-service-cluster
         endpoints:
@@ -136,7 +140,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: 10.42.0.5
+                      address: authorization-service.default
                       port_value: 50551
     - name: market-data-service-cluster
       connect_timeout: 0.25s
