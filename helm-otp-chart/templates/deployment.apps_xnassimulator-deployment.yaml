@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       annotations:
-        instrumentation.opentelemetry.io/inject-java: default/splunk-otel-collector
+        # instrumentation.opentelemetry.io/inject-java: default/splunk-otel-collector
       labels:
       labels:
         app: xnassimulator
