@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/envoyproxy/go-control-plane/envoy/api/v3/core"
+	//api "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	envoytype "github.com/envoyproxy/go-control-plane/envoy/type"
+	envoytype "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/ettec/otp-common/bootstrap"
 	"github.com/ettech/open-trading-platform/go/authorization-service/api/loginservice"
 	"github.com/gogo/googleapis/google/rpc"
@@ -95,9 +96,11 @@ func newOkResponse() *auth.CheckResponse {
 		},
 		HttpResponse: &auth.CheckResponse_OkResponse{
 			OkResponse: &auth.OkHttpResponse{
-				Headers: []*envoy_api_v2_core.HeaderValueOption{
+				//Headers: []*envoy_api_v2_core.HeaderValueOption{
+				Headers: []*core.HeaderValueOption{
 					{
-						Header: &envoy_api_v2_core.HeaderValue{
+						//Header: &envoy_api_v2_core.HeaderValue{
+						Header: &core.HeaderValue{
 							Key:   "authorised",
 							Value: "true",
 						},
