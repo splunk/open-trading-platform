@@ -104,7 +104,8 @@ fi
 echo installing Envoy...
 
 kubectl create ns envoy
-helm install opentp-envoy --wait --namespace=envoy ./charts/envoy -f envoy-config-helm-values.yaml 
+#helm install opentp-envoy --wait --namespace=envoy ./charts/envoy -f envoy-config-helm-values.yaml 
+kubectl apply -f ../envoy/deployment.envoy.yaml  --namespace envoy
 if [ $? -ne 0 ]; then
    echo "Failed to install envoy"
    exit 1		
