@@ -35,9 +35,9 @@ spec:
         servicetype: execution-venue 
         mic: XNAS
     spec:
-      shareProcessNamespace: true    
+      shareProcessNamespace: true
       serviceAccount: otpservice
-      serviceAccountName: otpservice    
+      serviceAccountName: otpservice
       containers:
       - envFrom:
         - configMapRef:
@@ -90,11 +90,10 @@ spec:
           - name: OTEL_GO_AUTO_GLOBAL
             value: "true"
           - name: OTEL_LOG_LEVEL
-            value: "Debug"
+            value: "debug"
         securityContext:
           runAsUser: 0
-          privileged: true          
+          privileged: true
       volumes:
       - emptyDir: {}
         name: execution-venue-storage
-

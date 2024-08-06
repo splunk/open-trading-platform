@@ -35,9 +35,9 @@ spec:
         servicetype: market-data-gateway
         mic: XOSR
     spec:
-      shareProcessNamespace: true     
+      shareProcessNamespace: true
       serviceAccount: otpservice
-      serviceAccountName: otpservice    
+      serviceAccountName: otpservice
       containers:
       - env:
         - name: GATEWAY_ID
@@ -45,7 +45,7 @@ spec:
             fieldRef:
               fieldPath: metadata.name
         #image: {{ .Values.dockerRepo }}/otp-quote-aggregator:{{ .Values.dockerTag }}
-        image: quay.io/phagen/quote-aggregator:1.1.0    
+        image: quay.io/phagen/quote-aggregator:1.1.0
         imagePullPolicy: Always
         name: xosr-market-data-gateway
         ports:
@@ -74,8 +74,8 @@ spec:
           - name: OTEL_GO_AUTO_GLOBAL
             value: "true"
           - name: OTEL_LOG_LEVEL
-            value: "Debug"
+            value: "debug"
         securityContext:
           runAsUser: 0
-          privileged: true                    
+          privileged: true
 

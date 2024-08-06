@@ -53,4 +53,3 @@ spec:
       volumes:
       - emptyDir: {}
         name: fixsim-storage
-

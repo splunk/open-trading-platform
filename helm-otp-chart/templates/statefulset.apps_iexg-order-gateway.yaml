@@ -90,11 +90,10 @@ spec:
           - name: OTEL_GO_AUTO_GLOBAL
             value: "true"
           - name: OTEL_LOG_LEVEL
-            value: "Debug"
+            value: "debug"
         securityContext:
           runAsUser: 0
-          privileged: true  
+          privileged: true
       volumes:
       - emptyDir: {}
         name: execution-venue-storage
-     

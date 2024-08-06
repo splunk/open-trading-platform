@@ -51,7 +51,7 @@ spec:
           - name: OTEL_TRACES_EXPORTER
             value: "otlp"
           - name:  OTEL_EXPORTER_OTLP_PROTOCOL
-            value: "grpc"  
+            value: "grpc"
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
             value: "http://$(NODE_IP):4317"
           - name: OTEL_SERVICE_NAME
@@ -59,9 +59,9 @@ spec:
           - name: OTEL_PROPAGATORS
             value: "tracecontext,baggage"
           - name: OTEL_GO_AUTO_GLOBAL
-            value: "true"     
+            value: "true"
           - name: OTEL_LOG_LEVEL
-            value: "Debug"         
+            value: "debug"
         securityContext:
           runAsUser: 0
           privileged: true
@@ -72,4 +72,3 @@ spec:
       serviceAccount: otpservice
       serviceAccountName: otpservice
       terminationGracePeriodSeconds: 30
-

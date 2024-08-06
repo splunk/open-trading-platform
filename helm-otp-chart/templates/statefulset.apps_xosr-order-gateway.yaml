@@ -35,9 +35,9 @@ spec:
         servicetype: execution-venue 
         mic: XOSR
     spec:
-      shareProcessNamespace: true     
+      shareProcessNamespace: true
       serviceAccount: otpservice
-      serviceAccountName: otpservice  
+      serviceAccountName: otpservice
       containers:
       - envFrom:
         - configMapRef:
@@ -48,7 +48,7 @@ spec:
             fieldRef:
               fieldPath: metadata.name
         #image: {{ .Values.dockerRepo }}/otp-smart-router:{{ .Values.dockerTag }}
-        image: quay.io/phagen/smart-router:1.1.0          
+        image: quay.io/phagen/smart-router:1.1.0
         imagePullPolicy: Always
         name: xosr-order-gateway
         ports:
@@ -77,9 +77,7 @@ spec:
           - name: OTEL_GO_AUTO_GLOBAL
             value: "true"
           - name: OTEL_LOG_LEVEL
-            value: "Debug"
+            value: "debug"
         securityContext:
           runAsUser: 0
-          privileged: true                    
-
-
+          privileged: true

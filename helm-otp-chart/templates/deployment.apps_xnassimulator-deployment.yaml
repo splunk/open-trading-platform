@@ -19,7 +19,6 @@ spec:
       annotations:
         # instrumentation.opentelemetry.io/inject-java: default/splunk-otel-collector
       labels:
-      labels:
         app: xnassimulator
     spec:
       containers:
@@ -54,4 +53,3 @@ spec:
       volumes:
       - emptyDir: {}
         name: fixsim-storage
-
