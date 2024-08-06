@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	//api "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+
+	"github.com/emicklei/go-restful/v3/log"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoytype "github.com/envoyproxy/go-control-plane/envoy/type/v3"
@@ -13,10 +14,11 @@ import (
 	"github.com/gogo/googleapis/google/rpc"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	"github.com/sirupsen/logrus"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
-	"log"
-	"log/slog"
+
 	"net"
 	"os"
 	"os/signal"
@@ -37,7 +39,11 @@ type authService struct {
 
 func (a *authService) Login(_ context.Context, params *loginservice.LoginParams) (*loginservice.Token, error) {
 
-	log.Printf("logging in")
+	//log.Printf("logging in")
+	ctx := context.TODO()
+	span := oteltrace.SpanContextFromContext(ctx)
+	//span := oteltrace.SpanFromContext(spanContext)
+	logrus.WithFields(LogrusFields(span)).Info("logging in")
 
 	if user, ok := a.users[params.User]; ok {
 		return &loginservice.Token{
@@ -51,10 +57,12 @@ func (a *authService) Login(_ context.Context, params *loginservice.LoginParams)
 
 func (a *authService) Check(_ context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
 
+	ctx := context.TODO()
+	span := oteltrace.SpanContextFromContext(ctx)
+	//span := oteltrace.SpanFromContext(ctx)
 	path, ok := req.Attributes.Request.Http.Headers[":path"]
-
 	if ok && strings.HasPrefix(path, "/loginservice.LoginService") {
-		slog.Info("permitted login for path", "path", path)
+		logrus.WithFields(LogrusFields(span)).Info("permitted login for path", "path", path)
 		return newOkResponse(), nil
 	}
 
@@ -151,29 +159,37 @@ const (
 
 func main() {
 
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true})))
+	// Ensure logrus behaves like TTY is disabled
+	logrus.SetFormatter(&logrus.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	})
 
+	ctx := context.TODO()
+	//span := oteltrace.SpanFromContext(ctx)
+	span := oteltrace.SpanContextFromContext(ctx)
 	dbString := bootstrap.GetEnvVar(DatabaseConnectionString)
 	dbDriverName := bootstrap.GetEnvVar(DatabaseDriverName)
 
 	db, err := sql.Open(dbDriverName, dbString)
 	if err != nil {
-		log.Panicf("failed to open database connection: %v", err)
+		logrus.WithFields(LogrusFields(span)).Panicf("failed to open database connection: %v", err)
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
-			slog.Error("error when closing database connection", "error", err)
+			logrus.Error("error when closing database connection", "error", err)
+
 		}
 	}()
 
 	err = db.Ping()
 	if err != nil {
-		log.Panicf("could not establish a connection with the database: %v", err)
+		logrus.WithFields(LogrusFields(span)).Panicf("could not establish a connection with the database: %v", err)
 	}
-
+	// location for db span
 	r, err := db.Query("SELECT id, desk, permissionflags FROM users.users")
 	if err != nil {
-		log.Panicf("failed to get users from database")
+		logrus.WithFields(LogrusFields(span)).Panicf("failed to get users from database")
 	}
 
 	users := map[string]user{}
@@ -181,13 +197,13 @@ func main() {
 		u := user{}
 		err := r.Scan(&u.id, &u.desk, &u.permissionFlags)
 		if err != nil {
-			log.Panicf("failed to scan user row: %v", err)
+			logrus.WithFields(LogrusFields(span)).Panicf("failed to scan user row: %v", err)
 		}
 		u.token = uuid.New().String()
 		users[u.id] = u
 	}
 
-	slog.Info("loaded users", "userCount", len(users))
+	logrus.WithFields(LogrusFields(span)).Info("loaded users", "userCount", len(users))
 
 	authServer := &authService{users: users}
 
@@ -196,10 +212,10 @@ func main() {
 		loginPort := "50551"
 		lis, err := net.Listen("tcp", ":"+loginPort)
 		if err != nil {
-			log.Panicf("failed to listen: %v", err)
+			logrus.WithFields(LogrusFields(span)).Panicf("failed to listen: %v", err)
 		}
-		slog.Info("authentication server listening", "listenAddress", lis.Addr())
 
+		logrus.WithFields(LogrusFields(span)).Info("authentication server listening", "listenAddress", lis.Addr())
 		authenticationGrpcServer := grpc.NewServer()
 		loginservice.RegisterLoginServiceServer(authenticationGrpcServer, authServer)
 
@@ -213,19 +229,19 @@ func main() {
 			authenticationGrpcServer.GracefulStop()
 		}()
 
-		slog.Info("starting authentication server", "port", loginPort)
+		logrus.WithFields(LogrusFields(span)).Info("starting authentication server", "port", loginPort)
 		if err := authenticationGrpcServer.Serve(lis); err != nil {
-			log.Panicf("Failed to start authentication server: %v", err)
+			logrus.WithFields(LogrusFields(span)).Panicf("Failed to start authentication server: %v", err)
 		}
 	}()
 
 	authPort := "4000"
 	lis, err := net.Listen("tcp", ":"+authPort)
 	if err != nil {
-		log.Panicf("failed to listen: %v", err)
+		logrus.WithFields(LogrusFields(span)).Panicf("failed to listen: %v", err)
 	}
-	slog.Info("authorisation server listening", "listenAddress", lis.Addr())
 
+	logrus.WithFields(LogrusFields(span)).Info("authorisation server listening", "listenAddress", lis.Addr())
 	grpcServer := grpc.NewServer()
 
 	auth.RegisterAuthorizationServer(grpcServer, authServer)
@@ -240,9 +256,16 @@ func main() {
 		grpcServer.GracefulStop()
 	}()
 
-	slog.Info("starting authorization server", "port", authPort)
+	logrus.WithFields(LogrusFields(span)).Info("starting authorization server", "port", authPort)
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Panicf("Failed to start authorization server: %v", err)
+		logrus.WithFields(LogrusFields(span)).Panicf("Failed to start authorization server: %v", err)
 	}
 
+}
+
+func LogrusFields(span oteltrace.Span) logrus.Fields {
+	return logrus.Fields{
+		"span_id":  span.SpanContext().SpanID().String(),
+		"trace_id": span.SpanContext().TraceID().String(),
+	}
 }
