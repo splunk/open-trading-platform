@@ -20,7 +20,7 @@ spec:
         - configMapRef:
             name: opentp
         #image: {{ .Values.dockerRepo }}/otp-authorization-service:{{ .Values.dockerTag }}
-        #image: quay.io/phagen/authorization-service:1.3.0
+        image: quay.io/phagen/authorization-service:1.3.0
         iamge: rcastley895/auth:latest
         imagePullPolicy: Always
         name: authorization-service

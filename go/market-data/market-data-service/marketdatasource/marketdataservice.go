@@ -3,14 +3,15 @@ package marketdatasource
 import (
 	"context"
 	"fmt"
-	"github.com/ettec/otp-common/loadbalancing"
-	"github.com/ettec/otp-common/marketdata"
-	"github.com/ettec/otp-common/model"
-	"github.com/ettec/otp-common/staticdata"
 	"log/slog"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/ettec/otp-common/loadbalancing"
+	"github.com/ettec/otp-common/marketdata"
+	"github.com/ettec/otp-common/model"
+	"github.com/ettec/otp-common/staticdata"
 )
 
 type getListingFn func(ctx context.Context, listingId int32, result chan<- staticdata.ListingResult)
@@ -125,6 +126,9 @@ func newConnection(parentCtx context.Context, subscriberId string, getListingFn 
 }
 
 func (c *connection) addGateway(gateway MarketDataGateway, quoteDistributor *marketdata.QuoteDistributor) {
+	if c == nil || gateway == nil || quoteDistributor == nil {
+		return
+	}
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
