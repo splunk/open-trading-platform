@@ -2,6 +2,7 @@ package marketdatasource
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -126,9 +127,6 @@ func newConnection(parentCtx context.Context, subscriberId string, getListingFn 
 }
 
 func (c *connection) addGateway(gateway MarketDataGateway, quoteDistributor *marketdata.QuoteDistributor) {
-	if c == nil || gateway == nil || quoteDistributor == nil {
-		return
-	}
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -143,6 +141,11 @@ func (c *connection) addGateway(gateway MarketDataGateway, quoteDistributor *mar
 				return
 			case quote, ok := <-stream.Chan():
 				if !ok {
+					quote_contents, err := json.Marshal(quote)
+					if err != nil {
+						panic(err)
+					}
+					c.log.Info("Reading quote stream from quote distrubuter: ", string(quote_contents), ok)
 					return
 				}
 				c.out <- quote
