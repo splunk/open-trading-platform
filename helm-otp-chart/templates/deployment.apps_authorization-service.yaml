@@ -41,7 +41,7 @@ spec:
             value: "http://$(NODE_IP):4317"
           - name: OTEL_SERVICE_NAME
             value: "authorization-service"
-          - name: OTEL_PROPAGATORS
+          - name: OTEL_PROPAGATORS 
             value: "tracecontext,baggage"
   #        - name: OTEL_GO_AUTO_GLOBAL
   #          value: "true"     
