@@ -292,9 +292,10 @@ func LogrusFields(spanCtx oteltrace.SpanContext) logrus.Fields {
 		return logrus.Fields{}
 	}
 	return logrus.Fields{
-		"span_id":                spanCtx.SpanID().String(),
-		"trace_id":               spanCtx.TraceID().String(),
-		"trace_flags":            spanCtx.TraceFlags().String(),
-		"Deployment.environment": globalAPMService,
+		"span_id":      spanCtx.SpanID().String(),
+		"trace_id":     spanCtx.TraceID().String(),
+		"trace_flags":  spanCtx.TraceFlags().String(),
+		"service.name": globalAPMService,
+		//"Deployment.environment": globalAPMService,
 	}
 }
