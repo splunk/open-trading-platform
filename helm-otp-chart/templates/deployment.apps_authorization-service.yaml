@@ -14,26 +14,25 @@ spec:
       labels:
         app: authorization-service
     spec:
-      shareProcessNamespace: true
+    #  shareProcessNamespace: true
       containers:
       - envFrom:
         - configMapRef:
             name: opentp
         #image: {{ .Values.dockerRepo }}/otp-authorization-service:{{ .Values.dockerTag }}
-        image: quay.io/phagen/authorization-service:1.3.0
-        iamge: rcastley895/auth:latest
+        image: quay.io/phagen/authorization-service:1.4.0
         imagePullPolicy: Always
         name: authorization-service
-      - name: splunk-go-instrumentation
-        image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.14.0-alpha
-        imagePullPolicy: IfNotPresent
+  #    - name: splunk-go-instrumentation
+  #      image: ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:v0.14.0-alpha
+  #      imagePullPolicy: IfNotPresent
         env:
           - name: NODE_IP
             valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-          - name: OTEL_GO_AUTO_TARGET_EXE
-            value: "/app/service"
+  #        - name: OTEL_GO_AUTO_TARGET_EXE
+  #          value: "/app/service"
           - name: OTEL_TRACES_EXPORTER
             value: "otlp"
           - name:  OTEL_EXPORTER_OTLP_PROTOCOL
@@ -44,10 +43,10 @@ spec:
             value: "authorization-service"
           - name: OTEL_PROPAGATORS
             value: "tracecontext,baggage"
-          - name: OTEL_GO_AUTO_GLOBAL
-            value: "true"
-          - name: OTEL_LOG_LEVEL
-            value: "debug"
+  #        - name: OTEL_GO_AUTO_GLOBAL
+  #          value: "true"     
+  #        - name: OTEL_LOG_LEVEL
+  #          value: "Debug"         
         securityContext:
           runAsUser: 0
           privileged: true
