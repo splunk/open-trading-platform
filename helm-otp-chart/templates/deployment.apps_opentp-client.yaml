@@ -18,13 +18,11 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      annotations:
-        instrumentation.opentelemetry.io/inject-nodejs: default/splunk-otel-collector
+      creationTimestamp: null
       labels:
         app: opentp-client
     spec:
       containers:
-      #- image: quay.io/phagen/opentp-client:1.1.1
       - image: {{ .Values.dockerRepo }}/otp-opentp-client:{{ .Values.dockerTag }}
         imagePullPolicy: Always
         name: opentp-client
