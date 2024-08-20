@@ -6,9 +6,9 @@ import (
 	"errors"
 
 	"github.com/emicklei/go-restful/v3/log"
-	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	envoytype "github.com/envoyproxy/go-control-plane/envoy/type/v3"
+	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
+	envoytype "github.com/envoyproxy/go-control-plane/envoy/type"
 	"github.com/ettec/otp-common/bootstrap"
 	"github.com/ettech/open-trading-platform/go/authorization-service/api/loginservice"
 	"github.com/gogo/googleapis/google/rpc"
