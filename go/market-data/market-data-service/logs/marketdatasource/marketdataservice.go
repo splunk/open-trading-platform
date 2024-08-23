@@ -1,0 +1,230 @@
+package marketdatasource
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"slices"
+	"sync"
+	"time"
+
+	"github.com/ettec/otp-common/loadbalancing"
+	"github.com/ettec/otp-common/marketdata"
+	"github.com/ettec/otp-common/model"
+	"github.com/ettec/otp-common/staticdata"
+
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
+)
+
+type getListingFn func(ctx context.Context, listingId int32, result chan<- staticdata.ListingResult)
+
+type MarketDataGateway interface {
+	GetAddress() string
+	GetOrdinal() int
+	GetMarketMic() string
+}
+
+//go:generate go run github.com/golang/mock/mockgen -destination mocks/gatewaystreamsource.go -package mocks github.com/ettech/open-trading-platform/go/market-data/market-data-service/marketdatasource GatewayStreamSource
+type GatewayStreamSource interface {
+	NewQuoteStreamFromMdSource(ctx context.Context, id string, targetAddress string, maxReconnectInterval time.Duration,
+		quoteBufferSize int) (marketdata.QuoteStream, error)
+}
+
+type MarketDataService struct {
+	ctx                       context.Context
+	id                        string
+	gatewayStreamSource       GatewayStreamSource
+	getListing                getListingFn
+	subscribers               map[string]chan *model.ClobQuote
+	bufferSize                int
+	retryConnectSeconds       int
+	maxSubscriptionsPerClient int
+
+	sourceMutex sync.Mutex
+
+	subscriberIdToConn        map[string]*connection
+	gatewayToQuoteDistributor map[MarketDataGateway]*marketdata.QuoteDistributor
+}
+
+func NewMarketDataService(ctx context.Context, id string,
+	gatewayStreamSource GatewayStreamSource,
+	getListing getListingFn,
+	toClientBufferSize int, retryConnectSeconds int, maxSubscriptionsPerClient int) *MarketDataService {
+	//ctx := context.TODO()
+	newctx, span := otel.Tracer("otp-tracer").Start(context.Background(), "NewMarketDataService")
+	defer span.End()
+	spanCtx := trace.SpanContextFromContext(newctx)
+	logrus.WithFields(LogrusFields(spanCtx)).Info("NewMarketDataService")
+
+	return &MarketDataService{
+		ctx:                       ctx,
+		id:                        id,
+		gatewayStreamSource:       gatewayStreamSource,
+		getListing:                getListing,
+		subscribers:               map[string]chan *model.ClobQuote{},
+		bufferSize:                toClientBufferSize,
+		retryConnectSeconds:       retryConnectSeconds,
+		maxSubscriptionsPerClient: maxSubscriptionsPerClient,
+
+		subscriberIdToConn:        map[string]*connection{},
+		gatewayToQuoteDistributor: map[MarketDataGateway]*marketdata.QuoteDistributor{},
+	}
+
+}
+
+func (f *MarketDataService) AddMarketDataGateway(gateway MarketDataGateway) error {
+	f.sourceMutex.Lock()
+	defer f.sourceMutex.Unlock()
+
+	mdgQuoteStream, err := f.gatewayStreamSource.NewQuoteStreamFromMdSource(f.ctx, f.id, gateway.GetAddress(), time.Duration(f.retryConnectSeconds)*time.Second,
+		f.maxSubscriptionsPerClient)
+	if err != nil {
+		return fmt.Errorf("failed to create connection to market data source at %v, error: %w", gateway.GetAddress(), err)
+	}
+
+	qd := marketdata.NewQuoteDistributor(f.ctx, mdgQuoteStream, f.bufferSize)
+	f.gatewayToQuoteDistributor[gateway] = qd
+
+	for _, conn := range f.subscriberIdToConn {
+		conn.addGateway(gateway, qd)
+	}
+
+	return nil
+}
+
+func (f *MarketDataService) Connect(ctx context.Context, subscriberId string) marketdata.QuoteStream {
+	f.sourceMutex.Lock()
+	defer f.sourceMutex.Unlock()
+
+	conn := newConnection(ctx, subscriberId, f.getListing, f.bufferSize)
+	f.subscriberIdToConn[subscriberId] = conn
+
+	for gateway, quoteDistributor := range f.gatewayToQuoteDistributor {
+		conn.addGateway(gateway, quoteDistributor)
+	}
+
+	return conn
+}
+
+type connection struct {
+	ctx                  context.Context
+	log                  *slog.Logger
+	cancel               context.CancelFunc
+	subscriberId         string
+	getListingFn         getListingFn
+	gatewayToQuoteStream map[MarketDataGateway]marketdata.QuoteStream
+	out                  chan *model.ClobQuote
+
+	mutex sync.Mutex
+}
+
+func newConnection(parentCtx context.Context, subscriberId string, getListingFn getListingFn,
+	bufferSize int) *connection {
+
+	ctxfromparent, cancel := context.WithCancel(parentCtx)
+	ctx, span := otel.Tracer("otp-tracer").Start(ctxfromparent, "Login")
+	defer span.End()
+	spanCtx := trace.SpanContextFromContext(ctx)
+	conn := &connection{ctx: ctx, cancel: cancel, subscriberId: subscriberId,
+		getListingFn:         getListingFn,
+		gatewayToQuoteStream: map[MarketDataGateway]marketdata.QuoteStream{},
+		out:                  make(chan *model.ClobQuote, bufferSize),
+		log:                  logrus.WithFields(LogrusFields(spanCtx)).WithField("subsriberId", subscriberId),
+	}
+
+	return conn
+}
+
+func (c *connection) addGateway(gateway MarketDataGateway, quoteDistributor *marketdata.QuoteDistributor) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	stream := quoteDistributor.NewQuoteStream()
+	c.gatewayToQuoteStream[gateway] = stream
+
+	go func() {
+		defer stream.Close()
+		for {
+			select {
+			case <-c.ctx.Done():
+				return
+			case quote, ok := <-stream.Chan():
+				if !ok {
+					quote_contents, err := json.Marshal(quote)
+					if err != nil {
+						panic(err)
+					}
+					c.log.Info("Reading quote stream from quote distrubuter: ", string(quote_contents), ok)
+					return
+				}
+				c.out <- quote
+			}
+		}
+	}()
+}
+
+func (c *connection) Subscribe(listingId int32) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.log.Info("subscription request", "listingId", listingId)
+
+	listingChan := make(chan staticdata.ListingResult, 1)
+	c.getListingFn(c.ctx, listingId, listingChan)
+	listingResult := <-listingChan
+	if listingResult.Err != nil {
+		return fmt.Errorf("failed to get listing %v, error: %w", listingId, listingResult.Err)
+	}
+
+	mic := listingResult.Listing.Market.Mic
+	var gatewaysForMic []MarketDataGateway
+	for gateway := range c.gatewayToQuoteStream {
+		if gateway.GetMarketMic() == mic {
+			gatewaysForMic = append(gatewaysForMic, gateway)
+		}
+	}
+
+	slices.SortFunc(gatewaysForMic, func(i, j MarketDataGateway) int {
+		return i.GetOrdinal() - j.GetOrdinal()
+	})
+
+	if len(gatewaysForMic) > 0 {
+		numGateways := int32(len(gatewaysForMic))
+		ordinal := loadbalancing.GetBalancingOrdinal(listingId, numGateways)
+		gateway := gatewaysForMic[ordinal]
+		stream := c.gatewayToQuoteStream[gateway]
+		if err := stream.Subscribe(listingResult.Listing.Id); err != nil {
+			return fmt.Errorf("failed to subscribe to market quote for subscriber %v, listing %v, error: %w", c.subscriberId, listingResult.Listing.Id, err)
+		}
+	} else {
+		return fmt.Errorf("no market data gateway found for mic %v", mic)
+	}
+
+	return nil
+}
+
+func (c *connection) Chan() <-chan *model.ClobQuote {
+	return c.out
+}
+
+func (c *connection) Close() {
+	c.cancel()
+}
+
+func LogrusFields(spanCtx oteltrace.SpanContext) logrus.Fields {
+
+	if !spanCtx.IsValid() || globalAPMService == "" { // no trace info in spanctx or no env set
+		return logrus.Fields{}
+	}
+	return logrus.Fields{
+		"span_id":      spanCtx.SpanID().String(),
+		"trace_id":     spanCtx.TraceID().String(),
+		"trace_flags":  spanCtx.TraceFlags().String(),
+		"service.name": globalAPMService,
+		//"Deployment.environment": globalAPMService,
+	}
+}
