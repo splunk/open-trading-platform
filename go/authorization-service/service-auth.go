@@ -6,9 +6,9 @@ import (
 	"errors"
 
 	"github.com/emicklei/go-restful/v3/log"
-	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
-	envoytype "github.com/envoyproxy/go-control-plane/envoy/type"
+	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	envoytype "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/ettec/otp-common/bootstrap"
 	"github.com/ettech/open-trading-platform/go/authorization-service/api/loginservice"
 	"github.com/gogo/googleapis/google/rpc"
@@ -44,7 +44,7 @@ type authService struct {
 
 func (a *authService) Login(_ context.Context, params *loginservice.LoginParams) (*loginservice.Token, error) {
 	//ctx := context.TODO()
-	ctx, span := otel.Tracer("github.com/my/repo").Start(context.Background(), "Login")
+	ctx, span := otel.Tracer("otp-tracer").Start(context.Background(), "Login")
 	defer span.End()
 	spanCtx := trace.SpanContextFromContext(ctx)
 	logrus.WithFields(LogrusFields(spanCtx)).Info("logging in")
@@ -61,8 +61,8 @@ func (a *authService) Login(_ context.Context, params *loginservice.LoginParams)
 
 func (a *authService) Check(_ context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
 
-	ctx := context.TODO()
-	ctx, span := otel.Tracer("github.com/my/repo").Start(context.Background(), "Check")
+	//ctx := context.TODO()
+	ctx, span := otel.Tracer("otp-tracer").Start(context.Background(), "Check")
 	defer span.End()
 	spanCtx := trace.SpanContextFromContext(ctx)
 	path, ok := req.Attributes.Request.Http.Headers[":path"]
@@ -180,8 +180,8 @@ func main() {
 	globalAPMService = bootstrap.GetEnvVar(SplunkServiceName)
 
 	//get Tracer into the context
-	//ctx := context.TODO()
-	ctx, span := otel.Tracer("github.com/my/repo").Start(context.Background(), "main")
+	ctx := context.TODO()
+	ctx, span := otel.Tracer("otp-tracer").Start(context.Background(), "Auth-main")
 	defer span.End()
 	spanCtx := trace.SpanContextFromContext(ctx)
 

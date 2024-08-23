@@ -1,6 +1,6 @@
 module github.com/ettech/open-trading-platform/go/authorization-service
 
-go 1.21
+go 1.21.0
 
 require (
 	github.com/emicklei/go-restful/v3 v3.12.1
