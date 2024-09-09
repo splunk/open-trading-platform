@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-
 	api "github.com/ettec/otp-common/api/marketdataservice"
 	"github.com/ettec/otp-common/bootstrap"
 	"github.com/ettec/otp-common/k8s"
@@ -18,15 +17,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	v12 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
-
-	"github.com/signalfx/splunk-otel-go/distro"
-	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
-	oteltrace "go.opentelemetry.io/otel/trace"
-
+	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -36,12 +30,6 @@ import (
 	"syscall"
 	"time"
 )
-
-var globalAPMService string
-
-const (
-	SplunkServiceName = "OTEL_SERVICE_NAME"
-) // will be used to grab the env variable with the Env to use
 
 var connections = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "mds_active_connections",
@@ -73,11 +61,6 @@ type service struct {
 }
 
 func (s *service) Subscribe(_ context.Context, r *api.MdsSubscribeRequest) (*model.Empty, error) {
-	ctx, span := otel.Tracer("otp-tracer").Start(context.Background(), "Subscription")
-	defer span.End()
-	spanCtx := trace.SpanContextFromContext(ctx)
-	logrus.WithFields(LogrusFields(spanCtx)).Info("Handling subscription")
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -93,17 +76,13 @@ func (s *service) Subscribe(_ context.Context, r *api.MdsSubscribeRequest) (*mod
 }
 
 func (s *service) Connect(request *api.MdsConnectRequest, stream api.MarketDataService_ConnectServer) error {
-	ctx, span := otel.Tracer("otp-tracer").Start(context.Background(), "Connect")
-	defer span.End()
-	spanCtx := trace.SpanContextFromContext(ctx)
-
 	subscriberId := request.GetSubscriberId()
-	logrus.WithFields(LogrusFields(spanCtx)).Info("connect request received", "subscriberId", subscriberId)
+	slog.Info("connect request received", "subscriberId", subscriberId)
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if connection, ok := s.subscriberIdToConnection[subscriberId]; ok {
-		logrus.WithFields(LogrusFields(spanCtx)).Info("connection already exists, closing existing connection", "subscriberId", subscriberId)
+		slog.Info("connection already exists, closing existing connection", "subscriberId", subscriberId)
 		connection.Close()
 		connections.Dec()
 	}
@@ -121,11 +100,11 @@ func (s *service) Connect(request *api.MdsConnectRequest, stream api.MarketDataS
 	for {
 		select {
 		case <-stream.Context().Done():
-			logrus.WithFields(LogrusFields(spanCtx)).Info("connection closed", "subscriberId", subscriberId)
+			slog.Info("connection closed", "subscriberId", subscriberId)
 			return nil
 		case quote := <-connection.Chan():
 			if err := stream.Send(quote); err != nil {
-				logrus.WithFields(LogrusFields(spanCtx)).Error("failed to send quote, closing connection", "subscriberId", subscriberId, "error", err)
+				slog.Error("failed to send quote, closing connection", "subscriberId", subscriberId, "error", err)
 				return fmt.Errorf("failed to send quote: %w", err)
 			}
 			quotesSent.Inc()
@@ -135,31 +114,8 @@ func (s *service) Connect(request *api.MdsConnectRequest, stream api.MarketDataS
 
 func main() {
 
-	sdk, err := distro.Run()
-	if err != nil {
-		panic(err)
-	}
-	// Flush all spans before the application exits
-	defer func() {
-		if err := sdk.Shutdown(context.Background()); err != nil {
-			panic(err)
-		}
-	}()
-	//Set splunk APM data
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
-	globalAPMService = bootstrap.GetEnvVar(SplunkServiceName)
-
-	//get Tracer into the context
-	ctx := context.TODO()
-	ctx, span := otel.Tracer("otp-tracer").Start(context.Background(), "Market-service-main")
-	defer span.End()
-	spanCtx := trace.SpanContextFromContext(ctx)
-
-	// Ensure logrus behaves like TTY is disabled
-	logrus.SetFormatter(&logrus.TextFormatter{
-		DisableColors: true,
-		FullTimestamp: true,
-	})
 	id := bootstrap.GetEnvVar("MDS_ID")
 	connectRetrySecs := bootstrap.GetOptionalIntEnvVar("CONNECT_RETRY_SECONDS", 60)
 	maxSubscriptions := bootstrap.GetOptionalIntEnvVar("MAX_SUBSCRIPTIONS", 10000)
@@ -169,7 +125,7 @@ func main() {
 	go func() {
 		err := http.ListenAndServe(":8080", nil)
 		if err != nil {
-			logrus.WithFields(LogrusFields(spanCtx)).Error("failed to listen on metrics server port", "error", err)
+			slog.Error("failed to listen on metrics server port", "error", err)
 		}
 	}()
 
@@ -178,7 +134,7 @@ func main() {
 
 	sds, err := staticdata.NewStaticDataSource(ctx)
 	if err != nil {
-		logrus.WithFields(LogrusFields(spanCtx)).Panicf("failed to get static data source:%v", err)
+		log.Panicf("failed to get static data source:%v", err)
 	}
 
 	cf := marketdatasource.NewMarketDataService(ctx, id,
@@ -194,7 +150,7 @@ func main() {
 	})
 
 	if err != nil {
-		logrus.WithFields(LogrusFields(spanCtx)).Panicf("Error watching pods: %v", err)
+		log.Panicf("Error watching pods: %v", err)
 	}
 
 	go func() {
@@ -202,23 +158,23 @@ func main() {
 			pod := e.Object.(*v12.Pod)
 			bsp, err := loadbalancing.GetBalancingStatefulPod(*pod)
 			if err != nil {
-				logrus.WithFields(LogrusFields(spanCtx)).Error("failed to get balancing stateful pod", "pod", pod, "error", err)
+				slog.Error("failed to get balancing stateful pod", "pod", pod, "error", err)
 				continue
 			}
 
 			if e.Type == watch.Added {
 				if err = cf.AddMarketDataGateway(marketDataService{bsp: bsp}); err != nil {
-					logrus.WithFields(LogrusFields(spanCtx)).Error("failed to add new gateway", "balancingStatefulPod", bsp, "error", err)
+					slog.Error("failed to add new gateway", "balancingStatefulPod", bsp, "error", err)
 				}
 			}
 		}
 	}()
 
 	port := "50551"
-	logrus.WithFields(LogrusFields(spanCtx)).Info("starting market data service", "port", port)
+	slog.Info("starting market data service", "port", port)
 	lis, err := net.Listen("tcp", "0.0.0.0:"+port)
 	if err != nil {
-		logrus.WithFields(LogrusFields(spanCtx)).Panicf("Error while listening : %v", err)
+		log.Panicf("Error while listening : %v", err)
 	}
 
 	service := &service{connectionFactory: cf, subscriberIdToConnection: map[string]marketdata.QuoteStream{}}
@@ -240,7 +196,7 @@ func main() {
 	}()
 
 	if err := s.Serve(lis); err != nil {
-		logrus.WithFields(LogrusFields(spanCtx)).Panicf("Error while serving : %v", err)
+		log.Panicf("Error while serving : %v", err)
 	}
 }
 
@@ -256,18 +212,4 @@ func (m marketDataService) GetOrdinal() int {
 }
 func (m marketDataService) GetMarketMic() string {
 	return m.bsp.Mic
-}
-
-func LogrusFields(spanCtx oteltrace.SpanContext) logrus.Fields {
-
-	if !spanCtx.IsValid() || globalAPMService == "" { // no trace info in spanctx or no env set
-		return logrus.Fields{}
-	}
-	return logrus.Fields{
-		"span_id":      spanCtx.SpanID().String(),
-		"trace_id":     spanCtx.TraceID().String(),
-		"trace_flags":  spanCtx.TraceFlags().String(),
-		"service.name": globalAPMService,
-		//"Deployment.environment": globalAPMService,
-	}
 }

@@ -32,7 +32,7 @@ spec:
               apiVersion: v1
               fieldPath: metadata.name
         #image: {{ .Values.dockerRepo }}/otp-market-data-service:{{ .Values.dockerTag }}
-        image: ettec/otp-market-data-service:1.1.0
+        image: quay.io/phagen/otp/market-data-service:2.0
         imagePullPolicy: Always
         name: market-data-service
         resources: {}
@@ -47,7 +47,7 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
           - name: OTEL_GO_AUTO_TARGET_EXE
-            value: "/app/service"
+            value: "/app/market-data-service"
           - name: OTEL_TRACES_EXPORTER
             value: "otlp"
           - name:  OTEL_EXPORTER_OTLP_PROTOCOL
