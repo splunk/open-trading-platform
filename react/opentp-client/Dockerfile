@@ -8,13 +8,13 @@ COPY . ./
 RUN yarn install
 
 #RUN yarn test
-#RUN yarn build
+RUN yarn build
 
 
 EXPOSE 3000
 
-CMD [ "yarn", "start" ]
-#FROM nginx:1.17
+#CMD [ "yarn", "start" ]
+FROM nginx:1.17
 #FROM nginx:1.27.0-alpine-otel
-#COPY --from=react-build /app/build /usr/share/nginx/html
+COPY --from=react-build /app/build /usr/share/nginx/html
 

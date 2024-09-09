@@ -80,7 +80,8 @@ echo installing Postgresql database...
 
 kubectl create ns postgresql
 
-helm install opentp --wait --namespace postgresql bitnami/postgresql --version 13.1.5 --set-file primary.pgHbaConfiguration=./pb_hba_no_sec.conf --set volumePermissions.enabled=true
+#helm install opentp --wait --namespace postgresql bitnami/postgresql --version 13.1.5 --set-file primary.pgHbaConfiguration=./pb_hba_no_sec.conf --set volumePermissions.enabled=true
+helm install opentp --wait --namespace postgresql bitnami/postgresql --version 14.13.0 --set-file primary.pgHbaConfiguration=./pb_hba_no_sec.conf --set volumePermissions.enabled=true
 
 if [ $? -ne 0 ]; then
    echo "Failed to install postgres"
